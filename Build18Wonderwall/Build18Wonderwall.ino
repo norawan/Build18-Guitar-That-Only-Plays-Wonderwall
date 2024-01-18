@@ -16,6 +16,9 @@
 
 #include <Servo.h>
 
+#define DEBUG 1
+#define LONG_LENGTH 32
+
 // Toggled Servo Angles
 #define SERVO_POS_0 0  // Default position
 #define SERVO_POS_1 20
@@ -160,10 +163,13 @@ void loop() {
   // put your main code here, to run repeatedly:
 
   if (Serial.available()){
-    Serial.print("Data received: ");
     String data = Serial.readStringUntil('\n');
-    Serial.print(data);
-    Serial.print("\n");
+
+    if (DEBUG) {
+      Serial.print("Data received: ");
+      Serial.print(data);
+      Serial.print("\n");
+    }
 
     if (data.equals("Em")) { play_chord(Em); }
     else if (data.equals("G")) { play_chord(G); } 
@@ -203,10 +209,12 @@ void play_chord(chord_t chord) {
   pins_state |= (1 << chord.A_string_note);
   pins_state |= (1 << chord.E_string_note);
 
-  Serial.println(chord.name);
-  Serial.print("Pins: ");
-  Serial.print(pins_state, BIN);
-  Serial.print("\n");
+  if (DEBUG) {
+    Serial.println(chord.name);
+    Serial.print("Pins: ");
+    Serial.print(pins_state, BIN);
+    Serial.print("\n");
+  }
 
   press_solenoids(pins_state);
   
@@ -219,7 +227,7 @@ void play_chord(chord_t chord) {
  * @param[in] state bitmask for the state
  */
 void press_solenoids(long state) {
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < LONG_LENGTH; i++) {
     if (((state & valid_pins) >> i) & 1) { // Pin is valid and ON
       digitalWrite(i, HIGH);
     } else if ((valid_pins >> i) & 1) { // Pin is valid but not ON
@@ -257,7 +265,6 @@ void turn_servos(int mask) {
   servo_D.write(new_servo_D_pos);
   servo_A.write(new_servo_A_pos);
   servo_E.write(new_servo_E_pos);
-
   delay(10);
 
   servo_e_pos = new_servo_e_pos;
