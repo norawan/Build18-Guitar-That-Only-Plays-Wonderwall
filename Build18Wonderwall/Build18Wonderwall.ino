@@ -34,26 +34,26 @@
 #define E_STRING_PIN 5 // 6
 
 // First Fret
-#define e_1  // NC
+#define e_1 // NC
 #define B_1 6
-#define G_1  // NC
-#define D_1  // NC
-#define A_1  // NC
-#define E_1  // NC
+#define G_1 // NC
+#define D_1 // NC
+#define A_1 // NC
+#define E_1 // NC
 
 // Second Fret
 #define e_2 7
-#define B_2 8
+#define B_2 // NC
 #define G_2 9
 #define D_2 10
 #define A_2 11
-#define E_2  // NC
+#define E_2 // NC
 
 // Third Fret
 #define e_3 12
 #define B_3 13
-#define G_3  // NC
-#define D_3  // NC
+#define G_3 // NC
+#define D_3 // NC
 #define A_3 14
 #define E_3 15
 
@@ -76,7 +76,7 @@ typedef struct chord_t {
 chord_t Em;
 chord_t G;
 chord_t D;
-chord_t A;
+chord_t Asus4;
 chord_t C;
 
 // Create Servo objects
@@ -97,9 +97,7 @@ int servo_E_pos;
 
 long pins_state; // Bitmask where each bit position corresponds to the pin number
                 // i.e. ..001100 would mean pins 2 and 3 are on, the rest are off
-// long valid_pins = 0b110111101111011110110;
-long valid_pins = 0b1111111111111111;
-
+long valid_pins = 0b01111111;
 
 //////////////////////////////////////////////////////////////////////////
 // Functions
@@ -120,7 +118,6 @@ void setup() {
   pinMode(B_1, OUTPUT);
 
   pinMode(e_2, OUTPUT);
-  pinMode(B_2, OUTPUT);
   pinMode(G_2, OUTPUT);
   pinMode(D_2, OUTPUT);
   pinMode(A_2, OUTPUT);
@@ -138,7 +135,7 @@ void setup() {
   Em = format_chord("Em", OPEN, OPEN, OPEN, D_2, A_2, OPEN, 0b1111110);
   G = format_chord("G", e_3, OPEN, OPEN, OPEN, A_2, E_3, 0b1111110);
   D = format_chord("D", e_2, B_3, G_2, OPEN, OPEN, OPEN, 0b0011110);
-  A = format_chord("A", OPEN, B_2, G_2, D_2, OPEN, OPEN, 0b0111110);
+  Asus4 = format_chord("Asus4", OPEN, B_3, G_2, D_2, OPEN, OPEN, 0b0111110);
   C = format_chord("C", OPEN, B_1, OPEN, D_2, A_3, OPEN, 0b0111110);
 
   // Begin Serial Communication
@@ -147,13 +144,14 @@ void setup() {
   Serial.print("\n");
 
   // Test each chord
+  delay(1000);
   play_chord(Em);
   delay(1000);
   play_chord(G);
   delay(1000);
   play_chord(D);
   delay(1000);
-  play_chord(A);
+  play_chord(Asus4);
   delay(1000);
   play_chord(C);
   delay(1000);
@@ -174,11 +172,9 @@ void loop() {
     if (data.equals("Em")) { play_chord(Em); }
     else if (data.equals("G")) { play_chord(G); } 
     else if (data.equals("D")) { play_chord(D); }
-    else if (data.equals("A")) { play_chord(A); }
+    else if (data.equals("Asus4")) { play_chord(Asus4); }
     else if (data.equals("C")) { play_chord(C); }
-
   }
-
 }
 
 chord_t format_chord(String name, int e_note, int B_note, int G_note,
@@ -265,7 +261,7 @@ void turn_servos(int mask) {
   servo_D.write(new_servo_D_pos);
   servo_A.write(new_servo_A_pos);
   servo_E.write(new_servo_E_pos);
-  delay(10);
+  delay(20);
 
   servo_e_pos = new_servo_e_pos;
   servo_B_pos = new_servo_B_pos;
@@ -273,7 +269,6 @@ void turn_servos(int mask) {
   servo_D_pos = new_servo_D_pos;
   servo_A_pos = new_servo_A_pos;
   servo_E_pos = new_servo_E_pos;
-
 }
 
 /**
