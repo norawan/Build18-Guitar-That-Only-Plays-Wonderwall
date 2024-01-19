@@ -33,8 +33,6 @@ def getWonderwallDict():
         offset = 0
         for chord in measure.split(" "):
             if chord not in validChords: continue
-            print(chord)
-            print(offset)
 
             match beatNumber % 8:
                 case 0:
@@ -73,6 +71,6 @@ def getWonderwallDict():
 
             offset += (4 * offsetInterval)
             beatNumber = (beatNumber + 1) % NUM_BEATS_IN_MEASURE
-        result[i + 1] = chordDict
+        result[i] = chordDict
 
     return result, numMeasures

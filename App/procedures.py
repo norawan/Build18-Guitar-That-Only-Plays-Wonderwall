@@ -1,6 +1,9 @@
 import pygame
 from constants import *
 
+ORB_START_X = None
+MS_WIDTH = None
+
 def makeImage(file_path):
     # Load the image
     image = pygame.image.load(file_path)
@@ -22,8 +25,13 @@ def mouseInPauseButton(pauseLeft : pygame.Rect, pauseRight : pygame.Rect, mouseX
     fullButton = pauseLeft.union(pauseRight)
     return mouseInButton(fullButton, mouseX, mouseY)
 
-def mouseInBackButton(triangleCoordinates : tuple, bar : pygame.Rect, mouseX, mouseY):
+def mouseInSeekButton(triangleCoordinates : tuple, bar : pygame.Rect, mouseX, mouseY):
     return mouseInButton(bar, mouseX, mouseY) or mouseInTriangle(triangleCoordinates, mouseX, mouseY)
+
+def mouseInCircle(circlePos, radius, mouseX, mouseY):
+    (circleX, circleY) = circlePos
+    distSq = ((circleX - mouseX) ** 2) + ((circleY - mouseY) ** 2)
+    return (distSq <= (radius ** 2))
 
 # triHelper derived from https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
 def triHelper(p1, p2, p3):
@@ -76,8 +84,40 @@ def makeTriangle(centerCoordinate : tuple, base, height, direction):
         x3 = x_center - half_base
         y3 = y_center + half_height
     return ((x1, y1), (x2, y2), (x3, y3))
+
+def updateCurrentMeasure(userHasOrb, oldMeasure, oldOffset, oldTimePlayed, numMeasures, measureDuration_ns, mouseX):
+    if not userHasOrb:
+        return oldMeasure, oldOffset, oldTimePlayed, False
+    elif mouseX < (ORB_START_X): # past left bound of slider
+        return 0, 0, 0, True
+    elif mouseX > (ORB_START_X + MS_WIDTH): # past right bound of slider
+        return numMeasures, 0, numMeasures * measureDuration_ns, True
+    else: # jumping to specific location on slider
+        startDist = ORB_START_X
+        jumpFactor = (mouseX - startDist) / MS_WIDTH
+        roundedMeasure = round(jumpFactor * numMeasures)
+        if DEBUG : print("Changing measure to {}".format(roundedMeasure))
+        return roundedMeasure, 0, roundedMeasure * measureDuration_ns, True
+
+def orbOnScreen(screen : pygame.Surface, orbPos):
+    posX = orbPos[0] * screen.get_width() // FIGMA_SCREEN_WIDTH
+    posY = orbPos[1] * screen.get_height() // FIGMA_SCREEN_HEIGHT
+    return (posX, posY)
+
+# assumes orb will be moved to curMeasure
+def updateMeasureOrb(offset, curMeasure, numMeasures, oldOrbPos):
+    (_, oldOrbY) = oldOrbPos
+
+    if numMeasures == 0: # no song
+        return (ORB_START_X, oldOrbY)
+    else:
+        if (offset == None):
+            offset = 0
+        movement = MS_WIDTH * ((curMeasure + offset) / numMeasures)
+        newX = int(ORB_START_X + movement)
+        return (newX, oldOrbY)
     
-def createObjects(appScreen : pygame.Surface):
+def createObjects(appScreen : pygame.Surface,  orbPos: list):
     objects = []
 
     x_center = appScreen.get_width() // 2
@@ -90,7 +130,7 @@ def createObjects(appScreen : pygame.Surface):
     titleWidth = TITLE_WIDTH * appScreen.get_width() // FIGMA_SCREEN_WIDTH
     titleHeight = TITLE_HEIGHT * appScreen.get_height() // FIGMA_SCREEN_HEIGHT
     titleLeft = (x_center - (titleWidth // 2))
-    titleTop = y_center - (guitarHeight // 2) - (TITLE_VERTICAL_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
+    titleTop = y_center - (guitarHeight // 2) - (TITLE_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
 
     # Title Text
     fontSize = TITLE_FONT_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH
@@ -105,12 +145,13 @@ def createObjects(appScreen : pygame.Surface):
     guitarSurface = pygame.transform.scale(guitarSurface, (guitarWidth, guitarHeight))
     guitarRect = guitarSurface.get_rect()
     guitarRect.center = centerPoint.center
+    guitarRect.centery -= (GUITAR_IMG_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
 
     # Play button
     playBase = PLAY_SIZE * appScreen.get_height() // FIGMA_SCREEN_HEIGHT
     playHeight = playBase
     playX = x_center
-    playY = y_center + (guitarHeight // 2) + (PLAY_BUTTON_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
+    playY = y_center + (guitarHeight // 2) + (PLAY_BUTTON_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
     playCoordinates = makeTriangle((playX, playY), playBase, playHeight, "right")
 
     # Pause button
@@ -126,14 +167,55 @@ def createObjects(appScreen : pygame.Surface):
     # Backtrack button
     backBase = PLAY_SIZE * appScreen.get_height() // FIGMA_SCREEN_HEIGHT
     backHeight = playBase
-    backX = x_center - BACK_BUTTON_OFFSET * appScreen.get_width() // FIGMA_SCREEN_WIDTH
-    backY = y_center + (guitarHeight // 2) + (PLAY_BUTTON_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
+    backX = x_center - BACK_BUTTON_X_OFFSET * appScreen.get_width() // FIGMA_SCREEN_WIDTH
+    backY = y_center + (guitarHeight // 2) + (PLAY_BUTTON_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
     backCoordinates = makeTriangle((backX, backY), backBase, backHeight, "left")
     backBarWidth = (PLAY_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH) // 3
     backBarHeight = backHeight 
     backBarLeft = backX - (backHeight // 2)
     backBarTop = backY - (backBarHeight // 2)
     backBarRect = pygame.Rect(backBarLeft, backBarTop, backBarWidth, backBarHeight)
+
+    # Forward button
+    forwardBase = PLAY_SIZE * appScreen.get_height() // FIGMA_SCREEN_HEIGHT
+    forwardHeight = playBase
+    forwardX = x_center + FORWARD_BUTTON_X_OFFSET * appScreen.get_width() // FIGMA_SCREEN_WIDTH
+    forwardY = y_center + (guitarHeight // 2) + (PLAY_BUTTON_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
+    forwardCoordinates = makeTriangle((forwardX, forwardY), forwardBase, forwardHeight, "right")
+    forwardBarWidth = (PLAY_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH) // 3
+    forwardBarHeight = forwardHeight 
+    forwardBarLeft = forwardX + (forwardHeight // 2)
+    forwardBarTop = forwardY - (forwardBarHeight // 2)
+    forwardBarRect = pygame.Rect(forwardBarLeft, forwardBarTop, forwardBarWidth, forwardBarHeight)
+
+    # Measure slider
+    msWidth = MEASURE_SLIDER_WIDTH * appScreen.get_width() // FIGMA_SCREEN_WIDTH
+    msThick = MEASURE_SLIDER_THICKNESS * appScreen.get_height() // FIGMA_SCREEN_HEIGHT
+    msLeft = x_center - (msWidth // 2)
+    msTop = y_center + (guitarHeight // 2) + (MEASURE_SLIDER_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
+    measureSliderLine = pygame.Rect(msLeft, msTop, msWidth, msThick)
+    global MS_WIDTH
+    MS_WIDTH = msWidth
+
+    # Measure orb
+    measureOrbX, measureOrbY = msLeft, (msTop + msThick // 2)
+    orbPos[0] =  int(measureOrbX)
+    orbPos[1] = int(measureOrbY)
+    global ORB_START_X 
+    ORB_START_X = orbPos[0]
+
+    # Only Wonderwall Textbox 
+    textBoxWidth = TEXT_BOX_WIDTH * appScreen.get_width() // FIGMA_SCREEN_WIDTH 
+    textBoxHeight = TEXT_BOX_HEIGHT * appScreen.get_height() // FIGMA_SCREEN_HEIGHT
+    textBoxLeft = forwardX
+    textBoxTop = forwardY - (textBoxHeight // 2)
+    textBoxRect = pygame.Rect(textBoxLeft, textBoxTop, textBoxWidth, textBoxHeight)
+    
+    fontSize = TITLE_FONT_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH
+    titleFont = pygame.font.SysFont("Comic Sans", fontSize, bold=False)
+    textBoxText = titleFont.render("No other songs. Only Wonderwall.", True, WHITE, RED)
+    textBoxTextRect = textBoxText.get_rect()
+    textBoxTextRect.center = textBoxRect.center
 
     # Append objects to list
     objects.append((titleText, titleTextRect))  # Title
@@ -143,6 +225,11 @@ def createObjects(appScreen : pygame.Surface):
     objects.append(pauseRightBarRect)           # Right Pause Bar
     objects.append(backCoordinates)             # Back triangle
     objects.append(backBarRect)                 # Back bar
+    objects.append(forwardCoordinates)          # Forward triangle
+    objects.append(forwardBarRect)              # Forward bar
+    objects.append(measureSliderLine)           # Measure slider
+    objects.append((orbPos[0], orbPos[1]))      # Orb
+    objects.append((textBoxText, textBoxTextRect)) # Only Wonderwall Textbox
 
     return objects
 
@@ -156,10 +243,26 @@ def createColors():
     colors.append(WHITE)    # Right Pause Bar
     colors.append(WHITE)    # Back triangle
     colors.append(WHITE)    # Back bar
+    colors.append(WHITE)    # Forward triangle
+    colors.append(WHITE)    # Forward bar
+    colors.append(WHITE)    # Measure slider
+    colors.append(WHITE)    # Orb
+    colors.append(RED)      # Only Wonderwall Textbox
 
     return colors
 
-def drawObjects(screen : pygame.Surface, objects : list, colors : list[pygame.Color], showing : list[bool]):
+def createRadii(appScreen : pygame.Surface, L):
+
+    if appScreen.get_height() > appScreen.get_width():
+        orbRadius = appScreen.get_height() * ORB_RADIUS // FIGMA_SCREEN_HEIGHT
+    else:
+        orbRadius = appScreen.get_width() * ORB_RADIUS // FIGMA_SCREEN_WIDTH
+    
+    radii = [None] * len(L)
+    radii[ORB_IDX] = orbRadius
+    return radii
+
+def drawObjects(screen : pygame.Surface, objects : list, colors : list[pygame.Color], radii : list[int], showing : list[bool]):
     counter = -1
     for item in objects:
         counter += 1
@@ -177,9 +280,9 @@ def drawObjects(screen : pygame.Surface, objects : list, colors : list[pygame.Co
             type(item[0]) == type(item[1]) == type(item[2]) == type(item[3]) == int: # line
             end_pos = item[0] + item[2]
             pygame.draw.line(screen, colors[counter], (item[0], item[1]), (end_pos, item[1]), item[3])
-        # elif type(item) == tuple and len(item) == 2 and \
-        #     type(item[0]) == type(item[1]) == int: # circle
-        #     pygame.draw.circle(screen, colors[counter], item, radii[counter])
+        elif type(item) == tuple and len(item) == 2 and \
+            type(item[0]) == type(item[1]) == int: # circle
+            pygame.draw.circle(screen, colors[counter], item, radii[counter])
         else:
             print(f"Drawing Error. Type found: {type(item)}")
     return
@@ -188,4 +291,5 @@ def createShowParams(L):
     showing = [True] * len(L)
     showing[PAUSE_BAR1_IDX] = False
     showing[PAUSE_BAR2_IDX] = False
+    showing[TEXT_BOX_IDX] = False
     return showing

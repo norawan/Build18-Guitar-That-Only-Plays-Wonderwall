@@ -10,22 +10,13 @@ import time
 import serial
 from serial.tools.list_ports import comports
 
-ports = []
-
+RPIPORT = None
 for port in comports():
-    strPort=str(port)
-    try:
-        s = serial.Serial(strPort)
-        s.close()
-        ports.append(strPort)
-    except (OSError, serial.SerialException):
-        pass
-
-for port in ports:
-    print(port)
-
-if len(ports) > 0:
-    ser = serial.Serial(ports[0], BAUDRATE, timeout=MAX_LATENCY)
+    strPort = str(port)
+    if "RaspberryPi Pico" in strPort:
+        RPIPORT = strPort.split(" ")[0] # Get the first part before the - Raspberry Pi Pico
+if RPIPORT != None:
+    ser = serial.Serial(RPIPORT, BAUDRATE, timeout=MAX_LATENCY)
 
 class ThreadReturn(Thread):
     
@@ -53,24 +44,30 @@ pygame.display.set_icon(iconImage)
 running = True
 
 # application objects
-objects = createObjects(screen)
+orbPos = [0, 0]
+objects = createObjects(screen, orbPos)
 colors = createColors()
+radii = createRadii(screen, objects)
 showing = createShowParams(objects)
+userHasOrb = False
 
 # Wonderwall state
 wonderwallThread = ThreadReturn(None)
 playing = False
 
 scheduledPiece, totalMeasures = getWonderwallDict()
-startTime = time.time_ns()
-startMeasure = 1
-currentMeasure = 1
+startTime = 0
+timePlayed = 0
+startMeasure = 0
+currentMeasure = 0
+changedMeasure = False
 justStarted = True
 currentOffset = 0
 chordsToPlay = {}
 offsetList = []
 measureDuration_ns = (NUM_NS_IN_ONE_MINUTE / (TEMPO)) * NUM_BEATS_IN_MEASURE
-print(measureDuration_ns)
+if DEBUG: print("Measure duration (ns): {}".format(measureDuration_ns))
+if DEBUG: print("Total measures: {}".format(totalMeasures))
 
 ###############################################################################
 # Helper Functions
@@ -83,21 +80,23 @@ def togglePlayPause():
 
 def getMeasureFromTime():
     currentTime = time.time_ns()
-    elapsedTime = currentTime - startTime
-    measureNumber = elapsedTime // measureDuration_ns + (startMeasure)
+    elapsedTime = timePlayed + (currentTime - startTime)
+    measureNumber = elapsedTime // measureDuration_ns
     return measureNumber
 
 def getCurrentOffset():
     currentTime = time.time_ns()
-    elapsedTime = currentTime - startTime
-    offset = (elapsedTime / measureDuration_ns) - currentMeasure + startMeasure
+    elapsedTime = timePlayed + (currentTime - startTime)
+    offset = (elapsedTime / measureDuration_ns) % 1
     return offset
 
 # Plays input chord by sending command over serial port
-def playChord(chord):
-    
-    # ser.write("Em")
-    print(chord)
+def playChord(chord: str):
+    if RPIPORT != None and not userHasOrb:
+        # Only send chord to RPI if connected and user not adjusting
+        print(chord)
+        message = chord + "\n"
+        ser.write(message.encode())
         
 ###############################################################################
 # Main Loop
@@ -108,10 +107,22 @@ while running:
     # Set cursor when selecting pressable button
     if (showing[PLAY_BUTTON_IDX] and mouseInTriangle(objects[PLAY_BUTTON_IDX], mouseX, mouseY)) or \
         (not showing[PLAY_BUTTON_IDX]) and mouseInPauseButton(objects[PAUSE_BAR1_IDX], objects[PAUSE_BAR2_IDX], mouseX, mouseY) or \
-        (mouseInBackButton(objects[BACK_TRIANGLE_IDX], objects[BACK_BAR_IDX], mouseX, mouseY)):
+        (mouseInSeekButton(objects[BACK_TRIANGLE_IDX], objects[BACK_BAR_IDX], mouseX, mouseY)) or \
+        mouseInCircle(objects[ORB_IDX], radii[ORB_IDX], mouseX, mouseY):
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
     else:
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+    # Show/Hide Only Wonderwall Textbox
+    if (mouseInSeekButton(objects[FORWARD_TRIANGLE_IDX], objects[FORWARD_BAR_IDX], mouseX, mouseY)):
+        showing[TEXT_BOX_IDX] = True
+    else:
+        showing[TEXT_BOX_IDX] = False
+
+    currentMeasure, currentOffset, timePlayed, changedMeasure = updateCurrentMeasure(userHasOrb, currentMeasure, currentOffset, timePlayed, totalMeasures, measureDuration_ns, mouseX) # update current measure with mouse
+    orbPosTuple = updateMeasureOrb(currentOffset, currentMeasure, totalMeasures, orbPos) # match orb position to current measure
+    orbPos[0], orbPos[1] = orbPosTuple
+    objects[ORB_IDX] = orbPosTuple  # update slider graphics
 
     # Handle user events
     for event in pygame.event.get(): # event loop
@@ -132,19 +143,25 @@ while running:
             if height < MIN_HEIGHT:
                 height = MIN_HEIGHT
             screen = pygame.display.set_mode((width, height), DESIRED_EFFECTS)
-            objects = createObjects(screen)
+            objects = createObjects(screen, orbPos)
 
         elif event.type == MOUSEBUTTONDOWN:
             if showing[PLAY_BUTTON_IDX] and mouseInTriangle(objects[PLAY_BUTTON_IDX], mouseX, mouseY):
                 # Pressed Play
+                if DEBUG: print("Playing")
                 togglePlayPause()
                 playing = not playing
                 startTime = time.time_ns()
+                
             elif (not showing[PLAY_BUTTON_IDX]) and mouseInPauseButton(objects[PAUSE_BAR1_IDX], objects[PAUSE_BAR2_IDX], mouseX, mouseY):
                 # Pressed Pause
+                if DEBUG: print("Pausing")
+                # Update time played
+                timePlayed = timePlayed + time.time_ns() - startTime
                 togglePlayPause()
                 playing = not playing
-            elif (mouseInBackButton(objects[BACK_TRIANGLE_IDX], objects[BACK_BAR_IDX], mouseX, mouseY)):
+
+            elif (mouseInSeekButton(objects[BACK_TRIANGLE_IDX], objects[BACK_BAR_IDX], mouseX, mouseY)):
                 # Pressed Back
                 playing = False
                 showing[PLAY_BUTTON_IDX] = True
@@ -152,15 +169,36 @@ while running:
                 showing[PAUSE_BAR2_IDX] = False
 
                 # Reset music variables
-                currentMeasure = 1
+                currentMeasure = 0
+                currentOffset = 0
                 justStarted = True
+                timePlayed = 0
+
+                # Update orb position
+                orbPosTuple = updateMeasureOrb(currentOffset, currentMeasure, totalMeasures, orbPos) # match orb position to current measure
+                orbPos[0], orbPos[1] = orbPosTuple
+                objects[ORB_IDX] = orbPosTuple  # update slider graphics
+                drawObjects(screen, objects, colors, radii, showing)
+
+            elif mouseInCircle(objects[ORB_IDX], radii[ORB_IDX], mouseX, mouseY): # clicking in slider
+                userHasOrb = True
+
+        elif event.type == MOUSEBUTTONUP:
+            if (userHasOrb):
+                userHasOrb = False
+                startTime = time.time_ns()
+                chordsToPlay = scheduledPiece.get(currentMeasure, "none")
+                if (chordsToPlay != "none"):
+                    offsetList = list(chordsToPlay.keys())
+                    offsetList.sort()
 
     # Play Wonderwall
-    if (playing and currentMeasure <= totalMeasures):
+    if (playing and currentMeasure < totalMeasures):
         newMeasure = getMeasureFromTime()
-        if (justStarted or newMeasure > currentMeasure):
+        if (justStarted or changedMeasure or newMeasure > currentMeasure):
             if (DEBUG): print("Measure: {}".format(newMeasure))
             justStarted = False
+            changedMeasure = False
             currentMeasure = newMeasure
             chordsToPlay = scheduledPiece.get(currentMeasure, "none")
             if (chordsToPlay != "none"):
@@ -176,9 +214,11 @@ while running:
             if (chordAtOffset != "none"):
                 playChord(chordAtOffset)
             offsetList = offsetList[1:]
+        
+        currentOffset = newOffset
 
     screen.fill(BLACK)
-    drawObjects(screen, objects, colors, showing)
+    drawObjects(screen, objects, colors, radii, showing)
     pygame.display.update()
 
 pygame.quit()
