@@ -35,27 +35,27 @@
 
 // First Fret
 #define e_1 // NC
-#define B_1 6
+#define B_1 16
 #define G_1 // NC
 #define D_1 // NC
 #define A_1 // NC
 #define E_1 // NC
 
 // Second Fret
-#define e_2 7
+#define e_2 17
 #define B_2 // NC
-#define G_2 9
-#define D_2 10
-#define A_2 11
+#define G_2 18
+#define D_2 19
+#define A_2 20
 #define E_2 // NC
 
 // Third Fret
-#define e_3 12
-#define B_3 13
+#define e_3 21
+#define B_3 22
 #define G_3 // NC
 #define D_3 // NC
-#define A_3 14
-#define E_3 15
+#define A_3 26
+#define E_3 27
 
 #define BAUDRATE 115200
 
@@ -97,7 +97,7 @@ int servo_E_pos;
 
 long pins_state; // Bitmask where each bit position corresponds to the pin number
                 // i.e. ..001100 would mean pins 2 and 3 are on, the rest are off
-long valid_pins = 0b01111111;
+long valid_pins = 0x1100011111110000000000111111;
 
 //////////////////////////////////////////////////////////////////////////
 // Functions
@@ -142,19 +142,6 @@ void setup() {
   Serial.begin(BAUDRATE);
   Serial.print("Connecting to serial port...");
   Serial.print("\n");
-
-  // Test each chord
-  delay(1000);
-  play_chord(Em);
-  delay(1000);
-  play_chord(G);
-  delay(1000);
-  play_chord(D);
-  delay(1000);
-  play_chord(Asus4);
-  delay(1000);
-  play_chord(C);
-  delay(1000);
 }
 
 void loop() {
