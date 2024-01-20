@@ -144,6 +144,7 @@ while running:
                 height = MIN_HEIGHT
             screen = pygame.display.set_mode((width, height), DESIRED_EFFECTS)
             objects = createObjects(screen, orbPos)
+            radii = createRadii(screen, objects)
 
         elif event.type == MOUSEBUTTONDOWN:
             if showing[PLAY_BUTTON_IDX] and mouseInTriangle(objects[PLAY_BUTTON_IDX], mouseX, mouseY):

@@ -170,7 +170,7 @@ def createObjects(appScreen : pygame.Surface,  orbPos: list):
     backX = x_center - BACK_BUTTON_X_OFFSET * appScreen.get_width() // FIGMA_SCREEN_WIDTH
     backY = y_center + (guitarHeight // 2) + (PLAY_BUTTON_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
     backCoordinates = makeTriangle((backX, backY), backBase, backHeight, "left")
-    backBarWidth = (PLAY_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH) // 3
+    backBarWidth = (PLAY_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH) // 4
     backBarHeight = backHeight 
     backBarLeft = backX - (backHeight // 2)
     backBarTop = backY - (backBarHeight // 2)
@@ -182,7 +182,7 @@ def createObjects(appScreen : pygame.Surface,  orbPos: list):
     forwardX = x_center + FORWARD_BUTTON_X_OFFSET * appScreen.get_width() // FIGMA_SCREEN_WIDTH
     forwardY = y_center + (guitarHeight // 2) + (PLAY_BUTTON_Y_OFFSET * appScreen.get_height() // FIGMA_SCREEN_HEIGHT)
     forwardCoordinates = makeTriangle((forwardX, forwardY), forwardBase, forwardHeight, "right")
-    forwardBarWidth = (PLAY_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH) // 3
+    forwardBarWidth = (PLAY_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH) // 4
     forwardBarHeight = forwardHeight 
     forwardBarLeft = forwardX + (forwardHeight // 2)
     forwardBarTop = forwardY - (forwardBarHeight // 2)
