@@ -20,8 +20,8 @@
 #define LONG_LENGTH 32
 
 // Toggled Servo Angles
-#define SERVO_POS_0 10  // Default position
-#define SERVO_POS_1 30
+#define SERVO_POS_0 0  // Default position
+#define SERVO_POS_1 20
 
 #define OPEN 0
 
