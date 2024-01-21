@@ -99,13 +99,8 @@ def updateCurrentMeasure(userHasOrb, oldMeasure, oldOffset, oldTimePlayed, numMe
         if DEBUG : print("Changing measure to {}".format(roundedMeasure))
         return roundedMeasure, 0, roundedMeasure * measureDuration_ns, True
 
-def orbOnScreen(screen : pygame.Surface, orbPos):
-    posX = orbPos[0] * screen.get_width() // FIGMA_SCREEN_WIDTH
-    posY = orbPos[1] * screen.get_height() // FIGMA_SCREEN_HEIGHT
-    return (posX, posY)
-
-# assumes orb will be moved to curMeasure
-def updateMeasureOrb(offset, curMeasure, numMeasures, oldOrbPos):
+# assumes orb will be moved to currentMeasure
+def updateMeasureOrb(offset, currentMeasure, numMeasures, oldOrbPos):
     (_, oldOrbY) = oldOrbPos
 
     if numMeasures == 0: # no song
@@ -113,14 +108,21 @@ def updateMeasureOrb(offset, curMeasure, numMeasures, oldOrbPos):
     else:
         if (offset == None):
             offset = 0
-        movement = MS_WIDTH * ((curMeasure + offset) / numMeasures)
+        movement = MS_WIDTH * ((currentMeasure + offset) / numMeasures)
         newX = int(ORB_START_X + movement)
         return (newX, oldOrbY)
     
-def createObjects(appScreen : pygame.Surface,  orbPos: list):
+def updateLyric(oldLyricTuple, lyrics, currentMeasure):
+    (string, coordinates) = oldLyricTuple
+
+    string = lyrics[currentMeasure]
+
+    return (string, coordinates) 
+
+def createObjects(appScreen : pygame.Surface,  orbPos: list, lyrics: list, currentMeasure):
     objects = []
 
-    x_center = appScreen.get_width() // 2
+    x_center = appScreen.get_width() // 3
     y_center = appScreen.get_height() // 2
     centerPoint = pygame.Rect(x_center, y_center, 0, 0)
 
@@ -217,6 +219,14 @@ def createObjects(appScreen : pygame.Surface,  orbPos: list):
     textBoxTextRect = textBoxText.get_rect()
     textBoxTextRect.center = textBoxRect.center
 
+    # Current Lyric Textbox 
+    lyricBoxWidth = LYRIC_BOX_WIDTH * appScreen.get_width() // FIGMA_SCREEN_WIDTH 
+    lyricBoxHeight = LYRIC_BOX_HEIGHT * appScreen.get_height() // FIGMA_SCREEN_HEIGHT
+    lyricBoxLeft = x_center + (LYRIC_X_OFFSET * appScreen.get_width() // FIGMA_SCREEN_WIDTH) - (textBoxWidth // 2)
+    lyricBoxTop = y_center - (lyricBoxHeight // 2)
+    lyricBoxRect = pygame.Rect(lyricBoxLeft, lyricBoxTop, lyricBoxWidth, lyricBoxHeight)
+    lyric = str(lyrics[currentMeasure])
+
     # Append objects to list
     objects.append((titleText, titleTextRect))  # Title
     objects.append((guitarSurface, guitarRect)) # Image
@@ -230,6 +240,7 @@ def createObjects(appScreen : pygame.Surface,  orbPos: list):
     objects.append(measureSliderLine)           # Measure slider
     objects.append((orbPos[0], orbPos[1]))      # Orb
     objects.append((textBoxText, textBoxTextRect)) # Only Wonderwall Textbox
+    objects.append((lyric, (lyricBoxRect.x, lyricBoxRect.y))) # Lyrics Textbox
 
     return objects
 
@@ -248,6 +259,7 @@ def createColors():
     colors.append(WHITE)    # Measure slider
     colors.append(WHITE)    # Orb
     colors.append(RED)      # Only Wonderwall Textbox
+    colors.append(BLACK)    # Lyrics Textbox
 
     return colors
 
@@ -283,6 +295,9 @@ def drawObjects(screen : pygame.Surface, objects : list, colors : list[pygame.Co
         elif type(item) == tuple and len(item) == 2 and \
             type(item[0]) == type(item[1]) == int: # circle
             pygame.draw.circle(screen, colors[counter], item, radii[counter])
+        elif type(item) == tuple and len(item) == 2 and \
+            type(item[0]) == str and type(item[1]) == tuple: # Multiline Text
+            renderText(screen, item[0], item[1])
         else:
             print(f"Drawing Error. Type found: {type(item)}")
     return
@@ -293,3 +308,15 @@ def createShowParams(L):
     showing[PAUSE_BAR2_IDX] = False
     showing[TEXT_BOX_IDX] = False
     return showing
+
+def renderText(appScreen : pygame.Surface, string, coordinates):
+    (x, y) = coordinates
+    index = 0
+    for line in string.splitlines():
+        fontSize = LYRIC_FONT_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH
+        lyricFont = pygame.font.SysFont("Comic Sans", fontSize, bold=False)
+        lyric = lyricFont.render(line, True, WHITE, BLACK)
+        lyricX = x
+        lyricY = y + index * (2* LYRIC_FONT_SIZE * appScreen.get_width() // FIGMA_SCREEN_WIDTH)
+        index += 1
+        appScreen.blit(lyric, (lyricX, lyricY))

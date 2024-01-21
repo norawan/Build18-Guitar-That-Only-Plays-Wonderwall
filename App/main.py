@@ -5,7 +5,6 @@ from constants import *
 from procedures import *
 from wonderwall import *
 
-from threading import Thread
 import time
 import serial
 from serial.tools.list_ports import comports
@@ -17,21 +16,6 @@ for port in comports():
         RPIPORT = strPort.split(" ")[0] # Get the first part before the - Raspberry Pi Pico
 if RPIPORT != None:
     ser = serial.Serial(RPIPORT, BAUDRATE, timeout=MAX_LATENCY)
-
-class ThreadReturn(Thread):
-    
-    def __init__(self, group=None, target=None, name=None,
-                 args=(), kwargs={}, Verbose=None):
-        Thread.__init__(self, group, target, name, args, kwargs)
-        self._return = None
-
-    def run(self):
-        if self._target is not None:
-            self._return = self._target(*self._args,
-                                                **self._kwargs)
-    def join(self, *args):
-        Thread.join(self, *args)
-        return self._return
     
 pygame.init()
 screen = pygame.display.set_mode((MIN_WIDTH, MIN_HEIGHT), 
@@ -43,19 +27,9 @@ pygame.display.set_icon(iconImage)
 
 running = True
 
-# application objects
-orbPos = [0, 0]
-objects = createObjects(screen, orbPos)
-colors = createColors()
-radii = createRadii(screen, objects)
-showing = createShowParams(objects)
-userHasOrb = False
-
 # Wonderwall state
-wonderwallThread = ThreadReturn(None)
 playing = False
-
-scheduledPiece, totalMeasures = getWonderwallDict()
+scheduledPiece, totalMeasures, lyrics = getWonderwallDict()
 startTime = 0
 timePlayed = 0
 startMeasure = 0
@@ -68,6 +42,14 @@ offsetList = []
 measureDuration_ns = (NUM_NS_IN_ONE_MINUTE / (TEMPO)) * NUM_BEATS_IN_MEASURE
 if DEBUG: print("Measure duration (ns): {}".format(measureDuration_ns))
 if DEBUG: print("Total measures: {}".format(totalMeasures))
+
+# application objects
+orbPos = [0, 0]
+objects = createObjects(screen, orbPos, lyrics, int(currentMeasure))
+colors = createColors()
+radii = createRadii(screen, objects)
+showing = createShowParams(objects)
+userHasOrb = False
 
 ###############################################################################
 # Helper Functions
@@ -120,9 +102,14 @@ while running:
         showing[TEXT_BOX_IDX] = False
 
     currentMeasure, currentOffset, timePlayed, changedMeasure = updateCurrentMeasure(userHasOrb, currentMeasure, currentOffset, timePlayed, totalMeasures, measureDuration_ns, mouseX) # update current measure with mouse
-    orbPosTuple = updateMeasureOrb(currentOffset, currentMeasure, totalMeasures, orbPos) # match orb position to current measure
+    # mMatch orb position to current measure
+    orbPosTuple = updateMeasureOrb(currentOffset, currentMeasure, totalMeasures, orbPos) 
+    # Update slider graphics
     orbPos[0], orbPos[1] = orbPosTuple
-    objects[ORB_IDX] = orbPosTuple  # update slider graphics
+    objects[ORB_IDX] = orbPosTuple
+    # Update lyrics textbox
+    lyricTuple = updateLyric(objects[LYRICS_IDX], lyrics, int(currentMeasure))
+    objects[LYRICS_IDX] = lyricTuple
 
     # Handle user events
     for event in pygame.event.get(): # event loop
@@ -143,7 +130,7 @@ while running:
             if height < MIN_HEIGHT:
                 height = MIN_HEIGHT
             screen = pygame.display.set_mode((width, height), DESIRED_EFFECTS)
-            objects = createObjects(screen, orbPos)
+            objects = createObjects(screen, orbPos, lyrics, int(currentMeasure))
             radii = createRadii(screen, objects)
 
         elif event.type == MOUSEBUTTONDOWN:

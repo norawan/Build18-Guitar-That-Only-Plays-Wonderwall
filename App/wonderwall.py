@@ -14,6 +14,48 @@ Chorus_B = "C C Em Em D D Em Em, C C Em Em D D Em Em, C C Em Em D D Em Em, C C E
 strings = [Intro, Verse1, Verse2, PreChorus, Chorus_A, Rest, Verse3, PreChorus, Chorus_B, Chorus_B, Chorus_B]
 song = ','.join(strings)
 
+def getWonderwallLyrics(numMeasures):
+    lyrics = [""] * (numMeasures + 1)
+    lyrics[0] = "(Intro)"
+    lyrics[1] = "(Intro)"
+    lyrics[2] = "(Intro)"
+    lyrics[3] = "(Intro)"
+    lyrics[4] = "Today is gonna be the day\nthat they're gonna throw it back to you"
+    lyrics[5] = "And by now, you should've somehow\nrealised what you gotta do"
+    lyrics[6] = "I don't believe that anybody\nfeels the way I do about you now"
+    lyrics[8] = "And backbeat, the word is\non the street that the\nfire in your heart is out"
+    lyrics[9] = "I'm sure you've heard it all before,\nbut you never really had a doubt"
+    lyrics[10] = "I don't believe that anybody\nfeels the way I do about you now"
+    lyrics [12] = "And all the roads we\nhave to walk are winding"
+    lyrics[13] = "And all the lights that\nlead us there are blinding"
+    lyrics[14] = "There are many things\nthat I would like to say to you,\nbut I don't know how" 
+    lyrics[16] = "Because maybe"
+    lyrics[17] = "You're gonna be the one that saves me"
+    lyrics[18] = "And after all"
+    lyrics[19] = "You're my wonderwall"
+    lyrics[20] = "(Rest)"
+    lyrics[21] = "Today was gonna be the day,\nbut they'll never throw it back to you"
+    lyrics[22] = "And by now, you should've somehow\nrealised what you're not to do"
+    lyrics[23] = "I don't believe that anybody\nfeels the way I do about you now"
+    lyrics[25] = "And all the roads that lead\nyou there were winding"
+    lyrics[26] = "And all the lights that\nlight the way are blinding"
+    lyrics[27] = "There are many things\nthat I would like to say to you,\nbut I don't know how"
+    lyrics[29] = "I said maybe"
+    lyrics[30] = "You're gonna be the one that saves me"
+    lyrics[31] = "And after all"
+    lyrics[32] = "You're my wonderwall"
+    lyrics[33] = "I said maybe (I said maybe)"
+    lyrics[34] = "You're gonna be the one that saves me"
+    lyrics[35] = "And after all"
+    lyrics[36] = "You're my wonderwall"
+    lyrics[37] = "I said maybe (I said maybe)"
+    lyrics[38] = "You're gonna be the one that saves me\n(saves me)"
+    lyrics[39] = "You're gonna be the one that saves me\n(saves me)"
+    lyrics[40] = "You're gonna be the one that saves me\n(saves me)"
+    lyrics[41] = ""
+    
+    return lyrics
+
 def getWonderwallDict():
     result = dict()
     measures = song.split(",")
@@ -72,5 +114,7 @@ def getWonderwallDict():
             offset += (4 * offsetInterval)
             beatNumber = (beatNumber + 1) % NUM_BEATS_IN_MEASURE
         result[i] = chordDict
+    
+    lyrics = getWonderwallLyrics(numMeasures)
 
-    return result, numMeasures
+    return result, numMeasures, lyrics
