@@ -20,8 +20,8 @@
 #define LONG_LENGTH 32
 
 // Toggled Servo Angles
-#define SERVO_POS_0 0  // Default position
-#define SERVO_POS_1 20
+#define SERVO_POS_0 10  // Default position
+#define SERVO_POS_1 30
 
 #define OPEN 0
 
@@ -161,7 +161,8 @@ void loop() {
     else if (data.equals("D")) { play_chord(D); }
     else if (data.equals("Asus4")) { play_chord(Asus4); }
     else if (data.equals("C")) { play_chord(C); }
-    else if (data.equals("Test")) {test_solenoids();}
+    else if (data.equals("Test solenoids")) {test_solenoids();}
+    else if (data.equals("Test servos")) {test_servos();}
   }
 }
 
@@ -234,6 +235,44 @@ void press_solenoids(long state) {
       digitalWrite(i, LOW);
     }
   }
+}
+
+/**
+ * @brief Turns all servos
+ */
+void test_servos() {
+  Serial.println("Testing servos");
+  // Extract infor from mask
+  bool play_e = true;
+  bool play_B = true;
+  bool play_G = true;
+  bool play_D = true;
+  bool play_A = true;
+  bool play_E = true;
+
+  // Set new servo positions
+  int new_servo_e_pos = (play_e) ? get_new_servo_pos(servo_e_pos) : servo_e_pos;
+  int new_servo_B_pos = (play_B) ? get_new_servo_pos(servo_B_pos) : servo_B_pos;
+  int new_servo_G_pos = (play_G) ? get_new_servo_pos(servo_G_pos) : servo_G_pos;
+  int new_servo_D_pos = (play_D) ? get_new_servo_pos(servo_D_pos) : servo_D_pos;
+  int new_servo_A_pos = (play_A) ? get_new_servo_pos(servo_A_pos) : servo_A_pos;
+  int new_servo_E_pos = (play_E) ? get_new_servo_pos(servo_E_pos) : servo_E_pos;
+
+  // Write to new positions to servos
+  servo_e.write(new_servo_e_pos);
+  servo_B.write(new_servo_B_pos);
+  servo_G.write(new_servo_G_pos);
+  servo_D.write(new_servo_D_pos);
+  servo_A.write(new_servo_A_pos);
+  servo_E.write(new_servo_E_pos);
+  delay(20);
+
+  servo_e_pos = new_servo_e_pos;
+  servo_B_pos = new_servo_B_pos;
+  servo_G_pos = new_servo_G_pos;
+  servo_D_pos = new_servo_D_pos;
+  servo_A_pos = new_servo_A_pos;
+  servo_E_pos = new_servo_E_pos;
 }
 
 /**
