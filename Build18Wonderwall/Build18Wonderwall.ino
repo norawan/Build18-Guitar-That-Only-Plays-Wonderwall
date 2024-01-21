@@ -23,7 +23,7 @@
 #define SERVO_POS_0 0  // Default position
 #define SERVO_POS_1 20
 
-#define OPEN 31
+#define OPEN 0
 
 // Strings
 #define e_STRING_PIN 0 // 1
@@ -97,7 +97,7 @@ int servo_E_pos;
 
 long pins_state; // Bitmask where each bit position corresponds to the pin number
                 // i.e. ..001100 would mean pins 2 and 3 are on, the rest are off
-long valid_pins = 0x1100011111110000000000111111;
+long solenoid_pins = 0b1100011111110000000000000000;
 
 //////////////////////////////////////////////////////////////////////////
 // Functions
@@ -161,6 +161,7 @@ void loop() {
     else if (data.equals("D")) { play_chord(D); }
     else if (data.equals("Asus4")) { play_chord(Asus4); }
     else if (data.equals("C")) { play_chord(C); }
+    else if (data.equals("Test")) {test_solenoids();}
   }
 }
 
@@ -205,15 +206,31 @@ void play_chord(chord_t chord) {
 }
 
 /**
+ * @brief Tests turning on all solenoids
+ */
+void test_solenoids() {
+  for (int i = 0; i < LONG_LENGTH; i++) {
+    if (((solenoid_pins) >> i) & 1) { // Pin is valid
+      digitalWrite(i, HIGH);
+      delay(1000); // Wait 1 second
+      Serial.print("Testing pin: ");
+      Serial.print(i);
+      Serial.print("\n");
+      digitalWrite(i, LOW);
+    }
+  }
+}
+
+/**
  * @brief Changes Digital pin states based on input
  *
  * @param[in] state bitmask for the state
  */
 void press_solenoids(long state) {
   for (int i = 0; i < LONG_LENGTH; i++) {
-    if (((state & valid_pins) >> i) & 1) { // Pin is valid and ON
+    if (((state & solenoid_pins) >> i) & 1) { // Pin is valid and ON
       digitalWrite(i, HIGH);
-    } else if ((valid_pins >> i) & 1) { // Pin is valid but not ON
+    } else if ((solenoid_pins >> i) & 1) { // Pin is valid but not ON
       digitalWrite(i, LOW);
     }
   }
