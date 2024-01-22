@@ -119,6 +119,7 @@ while running:
         elif event.type == KEYDOWN:
             if event.key == K_SPACE:
                 playing = not playing
+                togglePlayPause()
 
         elif event.type == KEYUP:
             pass
