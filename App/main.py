@@ -118,8 +118,18 @@ while running:
 
         elif event.type == KEYDOWN:
             if event.key == K_SPACE:
-                playing = not playing
-                togglePlayPause()
+                if playing:
+                    # Pressed Pause
+                    if DEBUG: print("Pausing")
+                    # Update time played
+                    timePlayed = timePlayed + time.time_ns() - startTime
+                    togglePlayPause()
+                    playing = not playing
+                else: 
+                    if DEBUG: print("Playing")
+                    togglePlayPause()
+                    playing = not playing
+                    startTime = time.time_ns()
 
         elif event.type == KEYUP:
             pass
